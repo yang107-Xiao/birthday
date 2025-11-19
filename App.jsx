@@ -33,13 +33,14 @@ import {
 // -----------------------------------------------------------
 // 请去 Firebase 控制台 -> 项目设置 (Project Settings) 
 // -> 底部 "Your apps" -> 复制 SDK setup and configuration 中的内容替换下面
-const firebaseConfig = {
-  apiKey: "AIzaSyD-AbCdEfGhIjKlMnOpQrStUvWxYz_123456", // 是一长串乱码
-  authDomain: "birthday-2025.firebaseapp.com",
-  projectId: "birthday-2025",
-  storageBucket: "birthday-2025.firebasestorage.app",
-  messagingSenderId: "888888888888",
-  appId: "1:888888888888:web:aaaaaaaaaaaaaaaaaa"
+const firebaseConfig ={
+  apiKey: "AIzaSyBZ0W7UiFTrDo7NSa-zIeWCK06JP7v-okU",
+  authDomain: "birthday-d30cf.firebaseapp.com",
+  projectId: "birthday-d30cf",
+  storageBucket: "birthday-d30cf.firebasestorage.app",
+  messagingSenderId: "65580117074",
+  appId: "1:65580117074:web:5e6bb974f31411ca44838b",
+  measurementId: "G-S6QJ65TEVG"
 };
 // 给你的应用起个名字（用于数据库路径，保持不变即可，防止和其他同学冲突）
 const APP_NAME = "birthday-keeper-public"; 
@@ -474,3 +475,4 @@ const App = () => {
 
 
 export default App;
+
