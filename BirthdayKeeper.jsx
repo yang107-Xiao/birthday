@@ -1,40 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-// 引入腾讯云开发 SDK
-import cloudbase from '@cloudbase/js-sdk';
 import { 
-  Calendar, 
-  Gift, 
-  Trash2, 
-  Plus, 
-  Search, 
-  Clock, 
-  User, 
-  Sparkles,
-  Heart,
-  Save,
-  X
+  Calendar, Gift, Trash2, Plus, Search, Clock, Sparkles,
+  Heart, Save, X
 } from 'lucide-react';
 
-// -----------------------------------------------------------
-// 🔴 配置区域 (Configuration Area)
-// -----------------------------------------------------------
-// ✅ 直接使用你提供的环境 ID，避免环境变量配置错误
-const ENV_ID = "software-0g6f2y6b52820cee"; 
+// 引入腾讯云官方 SDK
+import cloudbase from '@cloudbase/js-sdk';
 
-// -----------------------------------------------------------
-// ☁️ 初始化 CloudBase
-// -----------------------------------------------------------
-// 注意：确保已运行 npm install @cloudbase/js-sdk
+// -----------------------------
+// ☁️ CloudBase 配置与初始化
+// -----------------------------
+// 这里的 ID 是你刚才提供的。在本地运行时，它会直接连接到腾讯云。
+const ENV_ID = "software-0g6f2y6b52820cee";
+
+// 初始化应用
 const app = cloudbase.init({
   env: ENV_ID
 });
+
+// 获取认证和数据库实例
 const auth = app.auth();
 const db = app.database();
 
 // -----------------------------------------------------------
-// 🛠️ 辅助函数 (保持不变)
+// 🛠️ 辅助函数 (逻辑保持不变)
 // -----------------------------------------------------------
-
 const getZodiacSign = (day, month) => {
   const zodiacSigns = [
     { sign: "摩羯座", endDay: 19, icon: "♑" },
@@ -42,20 +32,18 @@ const getZodiacSign = (day, month) => {
     { sign: "双鱼座", endDay: 20, icon: "♓" },
     { sign: "白羊座", endDay: 19, icon: "♈" },
     { sign: "金牛座", endDay: 20, icon: "♉" },
-    { sign: "双子座", endDay: 20, icon: "♊" },
+    { sign: "双子座", endDay: 21, icon: "♊" },
     { sign: "巨蟹座", endDay: 22, icon: "♋" },
     { sign: "狮子座", endDay: 22, icon: "♌" },
     { sign: "处女座", endDay: 22, icon: "♍" },
-    { sign: "天秤座", endDay: 22, icon: "♎" },
-    { sign: "天蝎座", endDay: 21, icon: "♏" },
+    { sign: "天秤座", endDay: 23, icon: "♎" },
+    { sign: "天蝎座", endDay: 22, icon: "♏" },
     { sign: "射手座", endDay: 21, icon: "♐" },
     { sign: "摩羯座", endDay: 31, icon: "♑" },
   ];
-  if (day <= zodiacSigns[month - 1].endDay) {
-    return zodiacSigns[month - 1];
-  } else {
-    return zodiacSigns[month];
-  }
+  // 防止月份越界或找不到
+  if (!zodiacSigns[month - 1]) return zodiacSigns[0];
+  return day <= zodiacSigns[month - 1].endDay ? zodiacSigns[month - 1] : zodiacSigns[month];
 };
 
 const calculateBirthdayStats = (birthDateString) => {
@@ -67,6 +55,7 @@ const calculateBirthdayStats = (birthDateString) => {
   
   let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
   
+  // 如果今年的生日已经过了，下一次生日就是明年
   if (nextBirthday < today) {
     nextBirthday.setFullYear(currentYear + 1);
   }
@@ -80,15 +69,13 @@ const calculateBirthdayStats = (birthDateString) => {
 };
 
 // -----------------------------------------------------------
-// 💎 组件 (高颜值版 UI)
+// 💎 组件 (高颜值 UI)
 // -----------------------------------------------------------
-
 const BirthdayCard = ({ item, onDelete, isOwner }) => {
   const { daysLeft, age, isToday } = calculateBirthdayStats(item.date);
   const birthDateObj = new Date(item.date);
   const zodiac = getZodiacSign(birthDateObj.getDate(), birthDateObj.getMonth() + 1);
 
-  // 动态样式
   const cardStyle = isToday 
     ? "bg-gradient-to-br from-pink-400/90 to-rose-500/90 text-white shadow-pink-300/50" 
     : "bg-white/70 hover:bg-white/90 text-slate-700 shadow-indigo-100/50";
@@ -140,9 +127,9 @@ const BirthdayCard = ({ item, onDelete, isOwner }) => {
            即将迎来 <span className={`text-base font-bold ${highlightTextStyle}`}>{age}</span> 岁
         </div>
         
-        {/* CloudBase 中我们使用 _id 作为唯一标识符 */}
+        {/* 删除按钮：使用 item.id (已经在 fetch 时处理过) */}
         <button 
-          onClick={() => onDelete(item._id)}
+          onClick={() => onDelete(item.id)}
           className={`opacity-0 group-hover:opacity-100 transition-all duration-300 p-2 rounded-full ${isToday ? 'hover:bg-white/20 text-white' : 'hover:bg-red-50 text-slate-300 hover:text-red-500'}`}
           title="删除"
         >
@@ -154,13 +141,14 @@ const BirthdayCard = ({ item, onDelete, isOwner }) => {
 };
 
 // -----------------------------------------------------------
-// 🚀 主组件 (CloudBase 逻辑版)
+// 🚀 主组件 (App)
 // -----------------------------------------------------------
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -169,48 +157,46 @@ const App = () => {
   const [newNote, setNewNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. 匿名登录 CloudBase
+  // 1. 登录逻辑 (匿名登录)
   useEffect(() => {
     const login = async () => {
       try {
         const loginState = await auth.getLoginState();
         if (!loginState) {
-          // 尝试匿名登录
           await auth.anonymousAuthProvider().signIn();
         }
         setUser(auth.currentUser);
       } catch (error) {
         console.error("CloudBase 登录失败:", error);
-        // 登录失败也关闭 loading，显示空状态
         setLoading(false); 
       }
     };
     login();
   }, []);
 
-  // 2. 实时监听数据库 (Watch)
+  // 2. 数据监听 (Watch)
   useEffect(() => {
     if (!user) return;
 
-    // 监听 'birthdays' 集合
     let watcher = null;
     try {
+        // 监听 'birthdays' 集合
         watcher = db.collection('birthdays')
         .orderBy('createdAt', 'desc')
         .watch({
             onChange: (snapshot) => {
-            // snapshot.docs 包含最新的数据
-            // 注意：CloudBase 返回的对象中主键是 _id
-            const loadedItems = snapshot.docs.map(doc => ({
-                ...doc,
-                id: doc._id // 映射 _id 到 id，方便前端使用
-            }));
-            setItems(loadedItems);
-            setLoading(false);
+                // ⚠️ 关键修正：CloudBase 返回的数据主键是 _id
+                // 我们在这里把它映射为 id，方便前端使用
+                const loadedItems = snapshot.docs.map(doc => ({
+                    ...doc,
+                    id: doc._id 
+                }));
+                setItems(loadedItems);
+                setLoading(false);
             },
             onError: (err) => {
-            console.error("监听失败:", err);
-            setLoading(false);
+                console.error("监听失败:", err);
+                setLoading(false);
             }
         });
     } catch (e) {
@@ -223,7 +209,7 @@ const App = () => {
     };
   }, [user]);
 
-  // 3. 提交数据到云端
+  // 3. 添加数据
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newName || !newDate || !user) return;
@@ -233,28 +219,29 @@ const App = () => {
       await db.collection('birthdays').add({
         name: newName,
         date: newDate,
-        note: newNote,
+        note: newNote || '',
         createdAt: new Date().toISOString(),
         createdBy: user.uid
       });
       
+      // 重置表单
       setNewName('');
       setNewDate('');
       setNewNote('');
       setShowForm(false);
     } catch (error) {
       console.error("添加失败:", error);
-      alert("添加失败，请检查：\n1. 数据库权限是否开启为'所有人可读写'?\n2. 网络是否正常?");
+      alert("添加失败，请检查网络或数据库权限");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 4. 删除云端数据
+  // 4. 删除数据
   const handleDelete = async (id) => {
     if (!window.confirm('确定要删除这条生日记录吗？')) return;
     try {
-      // 这里的 id 应该是文档的 _id
+      // 使用文档的 ID 删除
       await db.collection('birthdays').doc(id).remove();
     } catch (error) {
       console.error("删除失败:", error);
@@ -262,12 +249,14 @@ const App = () => {
     }
   };
 
+  // 排序和搜索逻辑
   const sortedAndFilteredItems = useMemo(() => {
     let filtered = items;
     if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
       filtered = items.filter(item => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.note?.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.name || '').toLowerCase().includes(lowerTerm) ||
+        (item.note || '').toLowerCase().includes(lowerTerm)
       );
     }
     return filtered.sort((a, b) => {
@@ -276,10 +265,11 @@ const App = () => {
       if (statsA.daysLeft !== statsB.daysLeft) {
         return statsA.daysLeft - statsB.daysLeft;
       }
-      return a.name.localeCompare(b.name);
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [items, searchTerm]);
 
+  // 统计数据
   const stats = useMemo(() => {
     const todayCount = sortedAndFilteredItems.filter(i => calculateBirthdayStats(i.date).daysLeft === 0).length;
     const thisMonthCount = sortedAndFilteredItems.filter(i => calculateBirthdayStats(i.date).daysLeft <= 30).length;
@@ -288,7 +278,6 @@ const App = () => {
 
   if (loading) {
     return (
-      // 保持极光背景，即使在加载中
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-100 flex items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -421,11 +410,9 @@ const App = () => {
           {sortedAndFilteredItems.length > 0 ? (
             sortedAndFilteredItems.map(item => (
               <BirthdayCard 
-                key={item._id} // CloudBase 使用 _id
+                key={item.id} // 这里的 id 已经是映射过的
                 item={item} 
                 onDelete={handleDelete}
-                // 如果用户是创建者，或者没有开启登录限制（所有人都能删），显示删除按钮
-                isOwner={true} 
               />
             ))
           ) : (
